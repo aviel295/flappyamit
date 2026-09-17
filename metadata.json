@@ -1,0 +1,6 @@
+{
+  "name": "Flappy Amit",
+  "description": "Authentic 8-bit retro pixelated Flappy Amit arcade game with classic physics, animated flapping pixel bird, scrolling pipes, ground mechanics, medals, high score tracking, and sweet encouraging failure messages for Amit.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
