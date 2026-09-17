@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Flappy Amit</title>
+  
+  <!-- iOS PWA / Home Screen Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Flappy Amit">
+  <meta name="theme-color" content="#FFE4E8">
+  
+  <!-- Web Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <!-- Retro Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #FFE4E8;
+      font-family: 'Press Start 2P', monospace, sans-serif;
+      touch-action: manipulation;
+    }
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #FFE4E8;
+    }
+    #hud {
+      position: absolute;
+      top: env(safe-area-inset-top, 20px);
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #score-display {
+      font-size: 26px;
+      color: #FF2A85;
+      text-shadow: 2px 2px 0 #FFF, 4px 4px 0 #C2185B;
+    }
+    #pause-btn {
+      pointer-events: auto;
+      background: #FFF0F5;
+      border: 3px solid #FF2A85;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #C2185B;
+      transition: transform 0.1s;
+    }
+    #pause-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #C2185B;
+    }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(40, 10, 25, 0.45);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+      padding: 20px;
+    }
+    .card {
+      background: #FFF0F5;
+      border: 4px solid #FF2A85;
+      border-radius: 20px;
+      padding: 28px 20px;
+      text-align: center;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 10px 0 #C2185B, 0 15px 30px rgba(0, 0, 0, 0.3);
+    }
+    .card h1 {
+      font-size: 20px;
+      color: #FF1493;
+      margin-bottom: 16px;
+      text-shadow: 2px 2px 0 #FFC1E3;
+      letter-spacing: 1px;
+    }
+    .card p.subtitle {
+      font-size: 11px;
+      color: #880E4F;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .message-box {
+      background: #FFD1DC;
+      border: 3px solid #FF4081;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 24px;
+      font-size: 12px;
+      line-height: 1.8;
+      color: #560027;
+      text-shadow: 1px 1px 0 #FFF;
+    }
+    .score-stat {
+      font-size: 13px;
+      color: #333;
+      margin-bottom: 12px;
+    }
+    .pixel-btn {
+      background: #FF2A85;
+      color: #FFF;
+      border: 3px solid #880E4F;
+      border-radius: 12px;
+      padding: 14px 20px;
+      font-size: 13px;
+      font-family: 'Press Start 2P', monospace, sans-serif;
+      width: 100%;
+      cursor: pointer;
+      margin-top: 10px;
+      box-shadow: 0 4px 0 #880E4F;
+      transition: transform 0.08s;
+    }
+    .pixel-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #880E4F;
+    }
+    .pixel-btn.secondary {
+      background: #C2185B;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="hud">
+      <div id="score-display">0</div>
+      <button id="pause-btn">⏸️</button>
+    </div>
+    <div id="overlay">
+      <div id="modal-content" class="card">
+        <!-- Dynamic via JS -->
+      </div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const modalContent = document.getElementById('modal-content');
+    const hudScore = document.getElementById('score-display');
+    const pauseBtn = document.getElementById('pause-btn');
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Audio Synthesizer for Retro Sound Effects (Zero External Files Needed!)
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playBeep(freq, type = 'square', duration = 0.08) {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    // Game variables
+    let gameState = 'IDLE'; // IDLE, RUNNING, PAUSED, GAME_OVER
+    let birdY = height / 2;
+    let velocity = 0;
+    const gravity = 0.52;
+    const jumpForce = -8.2;
+    let score = 0;
+    let bestScore = parseInt(localStorage.getItem('flappy_amit_best') || '0', 10);
+    let pipes = [];
+    const pipeWidth = 64;
+    const pipeGap = 190;
+    const pipeSpeed = 3.2;
+
+    function jump() {
+      if (gameState === 'IDLE') {
+        gameState = 'RUNNING';
+        velocity = jumpForce;
+        playBeep(440, 'triangle');
+        updateUI();
+      } else if (gameState === 'RUNNING') {
+        velocity = jumpForce;
+        playBeep(520, 'triangle');
+      }
+    }
+
+    function togglePause() {
+      if (gameState === 'RUNNING') {
+        gameState = 'PAUSED';
+        updateUI();
+      } else if (gameState === 'PAUSED') {
+        gameState = 'RUNNING';
+        updateUI();
+      }
+    }
+
+    function resetGame() {
+      birdY = height / 2;
+      velocity = 0;
+      score = 0;
+      pipes = [];
+      gameState = 'IDLE';
+      updateUI();
+    }
+
+    // Touch & Mouse Handling
+    window.addEventListener('touchstart', (e) => {
+      if (e.target.closest('#pause-btn') || e.target.closest('.pixel-btn')) return;
+      jump();
+    });
+    window.addEventListener('mousedown', (e) => {
+      if (e.target.closest('#pause-btn') || e.target.closest('.pixel-btn')) return;
+      jump();
+    });
+    pauseBtn.addEventListener('click', togglePause);
+
+    function updateUI() {
+      hudScore.textContent = score;
+
+      if (gameState === 'IDLE') {
+        overlay.style.display = 'flex';
+        pauseBtn.style.display = 'block';
+        modalContent.innerHTML = `
+          <h1>💖 FLAPPY AMIT 💖</h1>
+          <p class="subtitle">TAP THE SCREEN TO FLY</p>
+          <div style="font-size: 42px; margin: 15px 0;">🎮</div>
+          <button class="pixel-btn" onclick="jump()">START GAME</button>
+        `;
+      } else if (gameState === 'PAUSED') {
+        overlay.style.display = 'flex';
+        pauseBtn.style.display = 'none';
+        modalContent.innerHTML = `
+          <h1>💖 PAUSED 💖</h1>
+          <div class="message-box">
+            If you already paused why not send me a massage?
+          </div>
+          <button class="pixel-btn" onclick="togglePause()">RESUME</button>
+          <button class="pixel-btn secondary" onclick="resetGame()">RESTART</button>
+        `;
+      } else if (gameState === 'GAME_OVER') {
+        overlay.style.display = 'flex';
+        pauseBtn.style.display = 'none';
+        modalContent.innerHTML = `
+          <h1 style="color: #D81B60;">GAME OVER</h1>
+          <div class="score-stat">SCORE: <b>${score}</b></div>
+          <div class="score-stat" style="color: #666; margin-bottom: 20px;">BEST: <b>${bestScore}</b></div>
+          <button class="pixel-btn" onclick="resetGame()">PLAY AGAIN</button>
+        `;
+      } else {
+        // RUNNING
+        overlay.style.display = 'none';
+        pauseBtn.style.display = 'block';
+      }
+    }
+
+    // Draw Pixel Heart
+    function drawHeart(x, y, size) {
+      ctx.save();
+      ctx.translate(x, y);
+      const rot = Math.min(Math.max(velocity * 4, -25), 70) * (Math.PI / 180);
+      ctx.rotate(rot);
+
+      ctx.font = `${size}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('💖', 0, 0);
+      ctx.restore();
+    }
+
+    // Main Game Loop
+    function gameLoop() {
+      // Clear Sky
+      ctx.fillStyle = '#FFE4E8';
+      ctx.fillRect(0, 0, width, height);
+
+      // Cloud / Background Hearts
+      ctx.fillStyle = 'rgba(255, 182, 193, 0.4)';
+      ctx.font = '24px sans-serif';
+      ctx.fillText('☁️', width * 0.2, 100);
+      ctx.fillText('☁️', width * 0.7, 180);
+
+      if (gameState === 'RUNNING') {
+        velocity += gravity;
+        birdY += velocity;
+
+        // Ground / Ceiling collision
+        if (birdY > height - 40 || birdY < 20) {
+          gameState = 'GAME_OVER';
+          playBeep(220, 'sawtooth', 0.2);
+          updateUI();
+        }
+
+        // Pipe updates
+        pipes.forEach(p => { p.x -= pipeSpeed; });
+
+        // Score update
+        pipes.forEach(p => {
+          if (!p.passed && p.x + pipeWidth < width / 2) {
+            p.passed = true;
+            score++;
+            playBeep(880, 'sine', 0.1);
+            hudScore.textContent = score;
+            if (score > bestScore) {
+              bestScore = score;
+              localStorage.setItem('flappy_amit_best', bestScore);
+            }
+          }
+        });
+
+        // Filter offscreen pipes
+        pipes = pipes.filter(p => p.x + pipeWidth > 0);
+
+        // Spawn new pipes
+        if (pipes.length === 0 || pipes[pipes.length - 1].x < width - 240) {
+          const minPipe = 70;
+          const maxPipe = height - pipeGap - 180;
+          const topH = Math.floor(Math.random() * (maxPipe - minPipe + 1)) + minPipe;
+          pipes.push({ x: width, topH: topH, passed: false });
+        }
+
+        // Collision detection
+        const birdRadius = 18;
+        const birdX = width / 2;
+        pipes.forEach(p => {
+          if (birdX + birdRadius > p.x && birdX - birdRadius < p.x + pipeWidth) {
+            if (birdY - birdRadius < p.topH || birdY + birdRadius > p.topH + pipeGap) {
+              gameState = 'GAME_OVER';
+              playBeep(220, 'sawtooth', 0.2);
+              updateUI();
+            }
+          }
+        });
+      }
+
+      // Draw Retro Valentine Pipes
+      pipes.forEach(p => {
+        ctx.fillStyle = '#FF69B4';
+        ctx.strokeStyle = '#C2185B';
+        ctx.lineWidth = 4;
+
+        // Top Pipe
+        ctx.fillRect(p.x, 0, pipeWidth, p.topH);
+        ctx.strokeRect(p.x, -4, pipeWidth, p.topH + 4);
+
+        // Top Pipe Cap
+        ctx.fillStyle = '#FF4081';
+        ctx.fillRect(p.x - 4, p.topH - 18, pipeWidth + 8, 18);
+        ctx.strokeRect(p.x - 4, p.topH - 18, pipeWidth + 8, 18);
+
+        // Bottom Pipe
+        const bY = p.topH + pipeGap;
+        const bH = height - bY;
+        ctx.fillStyle = '#FF69B4';
+        ctx.fillRect(p.x, bY, pipeWidth, bH);
+        ctx.strokeRect(p.x, bY, pipeWidth, bH + 4);
+
+        // Bottom Pipe Cap
+        ctx.fillStyle = '#FF4081';
+        ctx.fillRect(p.x - 4, bY, pipeWidth + 8, 18);
+        ctx.strokeRect(p.x - 4, bY, pipeWidth + 8, 18);
+      });
+
+      // Draw Bird
+      drawHeart(width / 2, birdY, 36);
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    updateUI();
+    gameLoop();
+  </script>
+</body>
+</html>
